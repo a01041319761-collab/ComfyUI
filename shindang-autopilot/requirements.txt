@@ -1,0 +1,8 @@
+flask>=3.0
+requests>=2.31
+anthropic>=0.40
+google-genai>=1.0
+google-api-python-client>=2.100
+google-auth-oauthlib>=1.2
+fal-client>=0.5
+cryptography>=42

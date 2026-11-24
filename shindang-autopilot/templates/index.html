@@ -1,0 +1,796 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#DCE2E4">
+<title>신당 오토파일럿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --mist:#DCE2E4; --paper:#F6F5F1; --ink:#1D1F24; --ink-2:#5B6168; --ink-3:#8D939A; --rule:#C6CDD0;
+    --accent:#B3302A;   /* 신당 대표색 (설정에서 바뀜) */
+    --cyan:#2C5873; --amber:#C8902A; --ok:#2E6B4F; --err:#A8322B;
+    --serif:"Gowun Batang","Nanum Myeongjo","Noto Serif CJK KR",serif;
+    --sans:"IBM Plex Sans KR","Apple SD Gothic Neo",sans-serif;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { background:var(--mist); }
+  body { margin:0; color:var(--ink); font:15px/1.55 var(--sans); }
+  button, input, textarea { font:inherit; color:inherit; }
+  :focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+  .wrap { max-width:480px; margin:0 auto; padding:0 20px 56px; }
+  [hidden] { display:none !important; }
+
+  .top { display:flex; align-items:center; gap:12px; padding:20px 0 14px; }
+  .brandmark { width:44px; height:44px; flex:none; border-radius:4px; overflow:hidden; display:grid; place-items:center; }
+  .brandmark img { width:100%; height:100%; object-fit:contain; background:var(--paper); }
+  .stampmark { border:2.5px solid var(--accent); outline:1px solid var(--accent); outline-offset:2px; color:var(--accent);
+               font:700 15px/1.05 var(--serif); transform:rotate(-6deg); background:var(--paper); overflow:visible; }
+  .stampmark span { writing-mode:vertical-rl; }
+  .top .who { flex:1; min-width:0; }
+  .top h1 { font:700 23px/1.2 var(--serif); margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sched { display:flex; align-items:center; gap:7px; font-size:13px; color:var(--ink-2); margin-top:2px; }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--ink-3); flex:none; }
+  .dot.on { background:var(--amber); }
+  .iconbtn { border:1px solid var(--rule); background:var(--paper); border-radius:50%; width:40px; height:40px;
+             display:grid; place-items:center; cursor:pointer; flex:none; }
+  .iconbtn svg { width:19px; height:19px; }
+
+  .tabs { display:flex; gap:22px; border-bottom:1px solid var(--rule); margin-bottom:20px; }
+  .tabs button { border:0; background:none; padding:10px 0 11px; font-size:15px; color:var(--ink-2); cursor:pointer; position:relative; }
+  .tabs button.on { color:var(--ink); font-weight:600; }
+  .tabs button.on::after { content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--accent); }
+
+  h2 { font:700 18px/1.3 var(--serif); margin:0 0 10px; }
+  .sec { margin-top:36px; }
+  .note { font-size:13px; color:var(--ink-2); margin:8px 0 0; }
+  .field { width:100%; border:1px solid var(--rule); background:var(--paper); border-radius:6px; padding:12px 13px; font-size:16px; }
+  textarea.field { min-height:76px; resize:vertical; }
+  .primary { border:0; background:var(--accent); color:#fff; border-radius:6px; padding:14px 16px; font-weight:600; font-size:16px; cursor:pointer; }
+  .primary:disabled { opacity:.45; cursor:default; }
+  .secondary { border:1px solid var(--rule); background:var(--paper); border-radius:6px; padding:13px 16px; font-weight:500; cursor:pointer; }
+  .secondary:disabled { opacity:.5; cursor:default; }
+  .linkbtn { border:0; background:none; color:var(--cyan); font-weight:500; padding:8px 0; cursor:pointer; }
+  .full { width:100%; }
+  .row { display:flex; gap:8px; align-items:center; }
+  .row.split { justify-content:space-between; }
+
+  .frame { position:relative; width:100%; aspect-ratio:9/16; max-height:60vh; background:#2A2F36; border-radius:4px; overflow:hidden; }
+  .frame video { width:100%; height:100%; object-fit:cover; display:block; }
+  .frame .blank { position:absolute; inset:0; display:grid; place-content:center; text-align:center; color:#C9CED3; padding:24px; gap:6px; }
+  .frame .blank b { font:700 20px/1.35 var(--serif); color:#F1F2F3; }
+  .seal { position:absolute; top:14px; right:14px; z-index:2; width:66px; height:66px; border:3px solid var(--accent);
+          outline:1px solid var(--accent); outline-offset:2px; color:var(--accent); background:rgba(246,245,241,.9);
+          display:grid; place-items:center; font:700 20px/1.05 var(--serif); transform:rotate(-7deg); border-radius:3px; pointer-events:none; }
+  .seal span { writing-mode:vertical-rl; letter-spacing:.06em; }
+  .seal.quiet { color:var(--cyan); border-color:var(--cyan); outline-color:var(--cyan); }
+  .seal.stamp { animation:stamp .38s cubic-bezier(.2,.9,.3,1.3); }
+  @keyframes stamp { from { transform:rotate(-7deg) scale(1.9); opacity:0; } }
+  .t-title { font:700 22px/1.4 var(--serif); margin:16px 0 2px; }
+  .t-meta { font-size:13px; color:var(--ink-2); }
+  .actions { display:flex; gap:10px; margin-top:16px; }
+  .actions .primary { flex:1; }
+  .results { margin-top:12px; font-size:14px; }
+  .results div { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--rule); }
+  .results .bad { color:var(--err); }
+  .results small { display:block; color:var(--ink-2); padding:0 0 8px; }
+  .steps { list-style:none; margin:16px 0 0; padding:0; counter-reset:s; }
+  .steps li { display:flex; align-items:center; gap:12px; padding:8px 0; color:var(--ink-3); }
+  .steps li::before { counter-increment:s; content:counter(s); width:26px; height:26px; border-radius:50%; border:1.5px solid var(--rule);
+                      display:grid; place-items:center; font-size:13px; flex:none; }
+  .steps li.done { color:var(--ink-2); }
+  .steps li.done::before { content:"✓"; border-color:var(--cyan); color:var(--cyan); }
+  .steps li.now { color:var(--ink); font-weight:600; }
+  .steps li.now::before { border-color:var(--accent); color:var(--accent); animation:pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { box-shadow:0 0 0 5px rgba(0,0,0,.08); } }
+  .strip { display:flex; gap:12px; overflow-x:auto; padding-bottom:6px; }
+  .strip button { flex:none; width:104px; border:0; background:none; padding:0; text-align:left; cursor:pointer; }
+  .strip .th { position:relative; width:104px; aspect-ratio:9/16; background:#2A2F36 center/cover; border-radius:3px; }
+  .strip .mini { position:absolute; right:6px; bottom:6px; font:700 12px/1 var(--serif); color:var(--accent); background:rgba(246,245,241,.92);
+                 border:1.5px solid var(--accent); padding:4px 5px; border-radius:2px; transform:rotate(-6deg); }
+  .strip .mini.quiet { color:var(--cyan); border-color:var(--cyan); }
+  .strip .cap { font-size:13px; line-height:1.35; margin-top:7px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .strip .d { font-size:12px; color:var(--ink-3); }
+  details.log { margin-top:28px; }
+  details.log summary { color:var(--ink-2); font-size:13px; cursor:pointer; }
+  details.log pre { white-space:pre-wrap; font-size:12px; line-height:1.6; color:var(--ink-2); background:var(--paper);
+                    border:1px solid var(--rule); border-radius:6px; padding:10px 12px; max-height:220px; overflow:auto; }
+
+  .day { display:grid; grid-template-columns:58px 1fr; gap:12px; align-items:start; padding:14px 0; border-bottom:1px solid var(--rule); }
+  .day .when { font-family:var(--serif); line-height:1.15; }
+  .day .when b { display:block; font-size:24px; }
+  .day .when span { font-size:13px; color:var(--ink-2); }
+  .day.today .when b { color:var(--accent); }
+  .day .field { padding:10px 11px; }
+  .day .made { font-size:13px; color:var(--ink-2); margin-top:5px; }
+  .day .made a { color:var(--cyan); cursor:pointer; }
+
+  .lead { font:400 19px/1.5 var(--serif); margin:0 0 6px; }
+  .lead b { font-weight:700; }
+  .facts { display:flex; gap:22px; margin:14px 0 4px; font-size:14px; color:var(--ink-2); }
+  .facts b { display:block; color:var(--ink); font:600 20px/1.2 var(--sans); }
+  .chart { margin-top:24px; }
+  .legend { display:flex; flex-wrap:wrap; gap:14px; font-size:12px; color:var(--ink-2); margin-top:6px; }
+  .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
+  .rank { list-style:none; margin:0; padding:0; }
+  .rank li { display:grid; grid-template-columns:44px 1fr auto; gap:12px; align-items:center; padding:10px 0; border-bottom:1px solid var(--rule); cursor:pointer; }
+  .rank .th { width:44px; aspect-ratio:9/16; background:#2A2F36 center/cover; border-radius:2px; }
+  .rank .t { font-size:14px; line-height:1.4; }
+  .rank .n { text-align:right; font-size:13px; color:var(--ink-2); }
+  .rank .n b { display:block; color:var(--ink); font-size:15px; }
+
+  .sheet { position:fixed; inset:0; z-index:10; background:var(--mist); overflow-y:auto; display:none; }
+  .sheet.on { display:block; animation:rise .28s ease-out; }
+  @keyframes rise { from { transform:translateY(24px); opacity:0; } }
+  .sheet-head { position:sticky; top:0; z-index:3; background:var(--mist); display:flex; align-items:center; justify-content:space-between;
+                padding:14px 20px; border-bottom:1px solid var(--rule); }
+  .sheet-head b { font:700 17px var(--serif); }
+  .copyrow { padding:14px 0; border-bottom:1px solid var(--rule); }
+  .copyrow .h { display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--ink-2); margin-bottom:4px; }
+  .copyrow p { margin:0; white-space:pre-wrap; }
+  .copyrow .linkbtn { padding:0; font-size:13px; }
+  .group { margin-top:30px; }
+  .group h3 { font:700 16px var(--serif); margin:0 0 4px; }
+  .item { padding:12px 0; border-bottom:1px solid var(--rule); }
+  .item > label, .lbl { display:block; font-size:13px; color:var(--ink-2); margin-bottom:6px; }
+  .toggle { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 0; border-bottom:1px solid var(--rule); }
+  .sw { position:relative; width:48px; height:28px; flex:none; }
+  .sw input { position:absolute; opacity:0; inset:0; margin:0; cursor:pointer; z-index:1; }
+  .sw span { position:absolute; inset:0; border-radius:99px; background:var(--rule); transition:background .15s; }
+  .sw span::after { content:""; position:absolute; top:3px; left:3px; width:22px; height:22px; border-radius:50%; background:#fff;
+                    transition:transform .15s; box-shadow:0 1px 2px rgba(0,0,0,.2); }
+  .sw input:checked + span { background:var(--cyan); }
+  .sw input:checked + span::after { transform:translateX(20px); }
+  .sw input:focus-visible + span { outline:2px solid var(--cyan); outline-offset:2px; }
+  .choice { display:flex; gap:8px; }
+  .choice button { flex:1; border:1px solid var(--rule); background:var(--paper); border-radius:6px; padding:11px 8px; cursor:pointer; font-size:14px; }
+  .choice button.on { border-color:var(--ink); background:var(--ink); color:var(--paper); font-weight:600; }
+  .savebar { position:sticky; bottom:0; background:linear-gradient(transparent, var(--mist) 30%); padding:22px 0 18px; }
+
+  .conn { padding:14px 0; border-bottom:1px solid var(--rule); }
+  .conn .row { margin-top:8px; }
+  .conn .row .field { flex:1; }
+  .conn .row .secondary { white-space:nowrap; padding:12px 14px; }
+  .st { font-size:13px; margin-top:6px; min-height:1em; }
+  .st.ok { color:var(--ok); } .st.no { color:var(--err); } .st.wait { color:var(--ink-2); }
+  .help { font-size:13px; color:var(--ink-2); }
+  .help a { color:var(--cyan); }
+
+  .voices { margin-top:8px; max-height:320px; overflow:auto; border:1px solid var(--rule); border-radius:6px; background:var(--paper); }
+  .voice { display:flex; align-items:center; gap:10px; padding:10px 12px; border-bottom:1px solid var(--rule); }
+  .voice:last-child { border:0; }
+  .voice input { width:20px; height:20px; accent-color:var(--cyan); flex:none; }
+  .voice .nm { flex:1; min-width:0; }
+  .voice .nm small { display:block; color:var(--ink-3); font-size:12px; }
+  .voice button { border:1px solid var(--rule); background:#fff; border-radius:99px; width:34px; height:34px; cursor:pointer; flex:none; }
+
+  .swatches { display:flex; gap:10px; flex-wrap:wrap; }
+  .swatches button { width:40px; height:40px; border-radius:50%; border:3px solid var(--mist); outline:1px solid var(--rule); cursor:pointer; }
+  .swatches button.on { outline:2px solid var(--ink); }
+  .logo-row { display:flex; align-items:flex-start; gap:14px; }
+  .logo-box { width:72px; height:72px; border:1px dashed var(--ink-3); border-radius:4px; display:grid; place-items:center;
+              background:var(--paper) center/contain no-repeat; font-size:12px; color:var(--ink-3); flex:none; }
+  .endprev { width:150px; aspect-ratio:9/16; background:#22344D; border-radius:4px; position:relative; overflow:hidden; margin:12px auto 0; }
+  .endprev .card { position:absolute; left:0; right:0; top:30%; height:34%; background:rgba(0,0,0,.62); display:grid; place-content:center;
+                   text-align:center; color:#fff; gap:2px; }
+  .endprev .card img { width:38px; height:38px; object-fit:contain; margin:0 auto 2px; }
+  .endprev .card b { font-size:14px; }
+  .endprev .card span { font-size:9px; opacity:.85; }
+
+  .char { display:grid; grid-template-columns:104px 1fr; gap:16px; padding:18px 0; border-bottom:1px solid var(--rule); }
+  .char-media { display:flex; flex-direction:column; gap:8px; }
+  .char-img { width:104px; aspect-ratio:9/16; border-radius:6px; background:#2A2F36 center/cover; display:grid; place-items:center;
+              color:#C9CED3; font-size:12px; text-align:center; padding:6px; }
+  .char-img.off { opacity:.4; }
+  .char-top { display:flex; align-items:center; gap:10px; }
+  .char-top .field { flex:1; font:700 17px var(--serif); padding:9px 11px; }
+  .char .field.small { font-size:15px; padding:9px 11px; }
+  .char select.field { appearance:auto; }
+  .char .btns { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  .char .btns .secondary { padding:9px 12px; font-size:14px; }
+  .cands { display:flex; gap:10px; margin-top:10px; }
+  .cand { width:88px; display:flex; flex-direction:column; gap:6px; }
+  .cand img { width:88px; aspect-ratio:9/16; object-fit:cover; border-radius:5px; }
+  .cand .secondary { padding:7px 6px; font-size:13px; }
+  details.more summary { font-size:13px; color:var(--cyan); cursor:pointer; margin-top:8px; }
+  .vchips { display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+  .vchips button { border:1px solid var(--rule); background:var(--paper); border-radius:99px; padding:6px 12px; font-size:13px; cursor:pointer; }
+  .vchips button.on { background:var(--ink); color:var(--paper); border-color:var(--ink); }
+  .lock { font-size:12px; color:var(--ink-2); border:1px solid var(--rule); border-radius:99px; padding:3px 9px; white-space:nowrap; }
+  .toggle.locked > span:first-child { color:var(--ink-3); }
+  .lic { background:var(--paper); border:1px solid var(--rule); border-radius:8px; padding:14px 16px; margin:6px 0 4px; font-size:14px; }
+  .lic b { font-family:var(--serif); font-size:16px; }
+  .wz-progress { display:flex; gap:6px; padding:16px 0 0; }
+  .wz-progress i { flex:1; height:3px; border-radius:2px; background:var(--rule); }
+  .wz-progress i.on { background:var(--accent); }
+  .wz-step { font-size:13px; color:var(--ink-2); margin:18px 0 4px; }
+  .wz-title { font:700 25px/1.3 var(--serif); margin:0 0 6px; }
+  .wz-desc { color:var(--ink-2); margin:0 0 8px; }
+  .wz-nav { position:sticky; bottom:0; display:flex; gap:10px; padding:20px 0; background:linear-gradient(transparent, var(--mist) 25%); }
+  .wz-nav .primary { flex:1; }
+
+  .toast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%); background:var(--ink); color:var(--paper); padding:11px 18px;
+           border-radius:6px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:30; max-width:90vw; text-align:center; }
+  .toast.on { opacity:1; }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app">
+  <div class="top">
+    <div class="brandmark" id="brandmark"></div>
+    <div class="who">
+      <h1 id="name">신당</h1>
+      <div class="sched"><span class="dot" id="schedDot"></span><span id="schedText"></span></div>
+    </div>
+    <button class="iconbtn" id="openSettings" aria-label="설정">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+    </button>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" data-tab="today" class="on">오늘</button>
+    <button role="tab" data-tab="plan">달력</button>
+    <button role="tab" data-tab="stats">성과</button>
+  </div>
+
+  <section data-view="today">
+    <div id="stage"></div>
+    <div class="sec">
+      <h2>새로 만들기</h2>
+      <div class="row">
+        <input class="field" id="topic" placeholder="주제 (비우면 달력이나 AI가 정해요)">
+        <button class="secondary" id="makeBtn" style="white-space:nowrap">만들기</button>
+      </div>
+      <p class="note">만든 영상은 확인한 뒤에 올라가요. 보통 5~15분 걸려요.</p>
+    </div>
+    <div class="sec">
+      <h2>지난 영상</h2>
+      <div class="strip" id="strip"></div>
+    </div>
+    <details class="log"><summary>작업 기록 자세히 보기</summary><pre id="log"></pre></details>
+  </section>
+
+  <section data-view="plan" hidden>
+    <h2 style="margin:0">다음 7일</h2>
+    <p class="note" style="margin-top:2px">주제를 적어두면 그날 자동 실행 때 그 주제로 만들어요.</p>
+    <div id="days" style="margin-top:8px"></div>
+    <button class="secondary full" id="fillPlan" style="margin-top:18px">빈 날 주제 AI로 채우기</button>
+    <p class="note">이미 적어둔 주제는 바뀌지 않아요. 비워둔 날은 그날 아침 AI가 새로 정해요.</p>
+  </section>
+
+  <section data-view="stats" hidden>
+    <div id="statsBody"></div>
+    <div class="row split" style="margin-top:22px">
+      <span class="note" id="metricsAt" style="margin:0"></span>
+      <button class="linkbtn" id="refreshMetrics">지금 업데이트</button>
+    </div>
+  </section>
+</div>
+
+<div class="sheet" id="detail" role="dialog" aria-label="영상 상세">
+  <div class="sheet-head"><b id="dTitle">영상</b><button class="linkbtn" data-close>닫기</button></div>
+  <div class="wrap" id="dBody"></div>
+</div>
+
+<div class="sheet" id="settings" role="dialog" aria-label="설정">
+  <div class="sheet-head"><b>설정</b><button class="linkbtn" data-close>닫기</button></div>
+  <div class="wrap">
+    <div class="group">
+      <h3>매일 자동 실행</h3>
+      <div class="toggle"><span>매일 자동으로 만들기</span><span class="sw"><input type="checkbox" id="c_schedule" aria-label="매일 자동으로 만들기"><span></span></span></div>
+      <div class="item"><label for="c_time">실행 시각 (이 컴퓨터 시간 기준)</label><input class="field" type="time" id="c_time"></div>
+      <div class="item"><span class="lbl">만든 뒤에</span><div class="choice" data-choice="mode"><button data-v="review">확인하고 올리기</button><button data-v="auto">바로 올리기</button></div></div>
+    </div>
+    <div class="group">
+      <h3>올릴 곳</h3>
+      <div id="licBox"></div>
+      <div id="platRowsS"></div>
+    </div>
+    <div class="group">
+      <h3>진행 캐릭터</h3>
+      <div class="toggle"><span>캐릭터가 말하는 영상으로 만들기</span><span class="sw"><input type="checkbox" id="c_charmode" aria-label="캐릭터 영상"><span></span></span></div>
+      <p class="note">켜면 캐릭터가 직접 말하는 영상을 만들어요. 이미지가 있는 캐릭터만 나와요. 끄면 장면 영상에 내레이션을 입혀요.</p>
+      <div class="item"><span class="lbl">진행 방식</span>
+        <div class="choice" data-choice="cast"><button type="button" data-v="ensemble">여럿이 번갈아</button><button type="button" data-v="solo">한 명이 혼자</button></div>
+        <label for="c_solo" class="lbl" style="margin-top:10px">혼자 진행할 캐릭터</label><select class="field small" id="c_solo"></select></div>
+      <div data-slot="chars"></div>
+      <div class="item"><label for="c_avatar">입 모양 맞추기 모델 (fal.ai)</label>
+        <div class="choice" data-choice="avatar"><button type="button" data-v="fal-ai/kling-video/ai-avatar/v2/standard">기본 (초당 약 $0.056)</button><button type="button" data-v="fal-ai/kling-video/ai-avatar/v2/pro">고화질 (초당 약 $0.115)</button></div></div>
+    </div>
+    <div class="group"><h3>신당 정보</h3><div data-slot="info"></div></div>
+    <div class="group"><h3>브랜딩</h3><div data-slot="brand"></div></div>
+    <div class="group">
+      <h3>목소리</h3>
+      <div class="item"><label for="c_voices">사용할 목소리 ID (한 줄에 하나, 매일 돌아가며 사용)</label><textarea class="field" id="c_voices"></textarea>
+        <button class="linkbtn" id="pickVoices">목록에서 고르기</button><div id="voicePickS"></div></div>
+    </div>
+    <div class="group">
+      <h3>영상 만들기</h3>
+      <div class="item"><label for="c_topic">주제 고정 (비우면 매일 새 주제)</label><input class="field" id="c_topic"></div>
+      <div class="item"><label for="c_veo">Veo 모델 ID</label><input class="field" id="c_veo"><p class="note">비용을 줄이려면 Google 모델 목록에서 Veo 3.1 Lite의 ID를 넣으세요.</p></div>
+      <div class="item"><span class="lbl">자막</span>
+        <div class="choice" data-choice="subs"><button type="button" data-v="chunk">말에 맞춰 짧게 크게</button><button type="button" data-v="sentence">문장 단위로</button></div>
+        <p class="note">'짧게 크게'는 "딱 하루 있어" → "첫째"처럼 2~4단어씩 말하는 타이밍에 맞춰 바뀌어요.</p></div>
+      <div class="item"><label for="c_font">자막 글꼴</label><input class="field" id="c_font"></div>
+    </div>
+    <div class="group"><h3>연결</h3><div data-slot="conn-ai"></div><div data-slot="conn-sns"></div></div>
+    <div class="savebar"><button class="primary full" id="saveAll">설정 저장</button></div>
+    <p style="text-align:center"><button class="linkbtn" id="rerunWizard">처음 설정 다시 하기</button> · <a href="/logout" class="linkbtn" style="text-decoration:none">로그아웃</a></p>
+  </div>
+</div>
+
+<div class="sheet" id="wizard" role="dialog" aria-label="처음 설정">
+  <div class="wrap">
+    <div class="wz-progress" id="wzProgress"></div>
+    <div id="wzBody"></div>
+    <div class="wz-nav">
+      <button class="secondary" id="wzBack">이전</button>
+      <button class="primary" id="wzNext">다음</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const SEAL = { generating:"제작", uploading:"게시", review:"확인", ready:"대기", done:"완료", partial:"일부", failed:"실패", skipped:"보류" };
+const QUIET = new Set(["generating","uploading","skipped"]);
+const PLAT = { instagram:"인스타그램 릴스", youtube:"유튜브 쇼츠", tiktok:"틱톡", x:"X" };
+const PSHORT = { instagram:"인스타", youtube:"유튜브", tiktok:"틱톡", x:"X" };
+const PCOLOR = { youtube:"#B3302A", instagram:"#C8902A", tiktok:"#2E6B4F", x:"#2C5873" };
+const SWATCH = [["#B3302A","주사"],["#2C5873","청"],["#B8862B","황"],["#2E6B4F","녹"],["#1D1F24","먹"],["#7A3B69","자"]];
+const STEPS_SCENE = ["주제와 대본 쓰기","장면 영상 3컷 만들기","목소리 입히기","자막 넣고 합치기","확인 기다리기"];
+const STEPS_CHAR = ["주제와 대사 쓰기","캐릭터 목소리 만들기","캐릭터가 말하는 장면 만들기","자막 넣고 합치기","확인 기다리기"];
+const CHAR_IDS = ["dongja","seonbi","seonnyeo","mudang"];
+const AI_CONN = [
+  ["claude","ANTHROPIC_API_KEY","Claude","대본과 캡션을 써요","https://console.anthropic.com/settings/keys"],
+  ["gemini","GEMINI_API_KEY","Gemini","캐릭터 이미지와 장면 영상을 만들어요","https://aistudio.google.com/apikey"],
+  ["elevenlabs","ELEVENLABS_API_KEY","ElevenLabs","대본을 목소리로 읽어요","https://elevenlabs.io/app/settings/api-keys"],
+  ["fal","FAL_KEY","fal.ai","캐릭터가 말하게 입 모양을 맞춰요","https://fal.ai/dashboard/keys"]];
+const SNS_CONN = [
+  ["instagram",[["IG_USER_ID","인스타그램 사용자 ID"],["IG_ACCESS_TOKEN","인스타그램 액세스 토큰"]],"인스타그램","비즈니스·크리에이터 계정과 Meta 개발자 앱이 필요해요","https://developers.facebook.com/docs/instagram-platform"],
+  ["x",[["X_USER_ACCESS_TOKEN","X 사용자 토큰"]],"X","tweet.write, media.write 권한이 있는 토큰","https://developer.x.com"],
+  ["tiktok",[["TIKTOK_CLIENT_KEY","틱톡 Client key"],["TIKTOK_CLIENT_SECRET","틱톡 Client secret"]],"틱톡","키를 저장한 뒤 이 컴퓨터에서 python tiktok_login.py 로 한 번 로그인해요","https://developers.tiktok.com"]];
+const DOW = ["일","월","화","수","목","금","토"];
+let S=null, tab="today", detailId=null, lastHero="", lastStrip="", lastSeal="", lastPlan="", lastStats="", connStatus={}, wz=0, wzOpen=false;
+
+function toast(m){ const t=$("#toast"); t.textContent=m; t.classList.add("on"); clearTimeout(toast.t); toast.t=setTimeout(()=>t.classList.remove("on"),2600); }
+async function api(path, body, isForm){
+  const opt = body===undefined ? {} : isForm ? {method:"POST", body} : {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)};
+  const r = await fetch(path, opt);
+  if (r.status===401){ location.href="/login"; return; }
+  const j = await r.json(); if(!r.ok) throw new Error(j.error||"요청을 처리하지 못했어요"); return j;
+}
+const when = id => id.replace(/^\d{4}(\d\d)(\d\d)-(\d\d)(\d\d).*/, (m,M,D,h,mi)=>`${+M}월 ${+D}일 ${h}:${mi}`);
+const hasVideo = h => ["review","ready","done","partial","uploading","skipped"].includes(h.status);
+const num = n => (n||0).toLocaleString("ko-KR");
+const sealText = () => (S.config.brand.seal || S.config.shindang.name.replace(/\s/g,"")).slice(0,2);
+const isoOf = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const addDays = (iso,n) => { const d=new Date(iso+"T00:00:00"); d.setDate(d.getDate()+n); return isoOf(d); };
+function seal(h, extra=""){ return `<div class="seal ${QUIET.has(h.status)?"quiet":""} ${extra}"><span>${SEAL[h.status]||"?"}</span></div>`; }
+
+/* 탭 */
+$$(".tabs button").forEach(b => b.onclick = () => {
+  tab = b.dataset.tab;
+  $$(".tabs button").forEach(x => x.classList.toggle("on", x===b));
+  $$("section[data-view]").forEach(s => s.hidden = s.dataset.view !== tab);
+  if (tab==="stats" && staleMetrics()) api("/api/metrics/refresh", {}).catch(()=>{});
+  lastPlan=""; lastStats=""; render();
+});
+function staleMetrics(){ const t=S?.config.metrics_at; return !t || (Date.now()-new Date(t).getTime()) > 6*3600e3; }
+
+/* 오늘 */
+function currentStep(){
+  const logs=S.logs; let start=-1;
+  for (let i=logs.length-1;i>=0;i--) if (logs[i].includes("자동화 시작")) { start=i; break; }
+  const tail=logs.slice(start+1).join("\n"); let st=0;
+  ["[1/5]","[2/5]","[3/5]","[4/5]"].forEach((m,i)=>{ if(tail.includes(m)) st=i; });
+  return st;
+}
+function resultsHTML(h){
+  const r=h.results||{}; const ks=Object.keys(PLAT).filter(k=>r[k]); if(!ks.length) return "";
+  return `<div class="results">${ks.map(k=>`<div><span>${PLAT[k]}</span><span class="${r[k].ok?"":"bad"}">${r[k].ok?(h.metrics?.[k]?`조회 ${num(h.metrics[k].views)}`:"올라감"):"실패"}</span></div>${r[k].ok?"":`<small>${esc(r[k].error)}</small>`}`).join("")}</div>`;
+}
+function vsrc(id,p){ return `/media/${id}/${p==="instagram"?"final_short":"final_"+p}.mp4`; }
+function variantChips(h){
+  const v=(h.variants||[]).filter(p=>PLAT[p]); if(v.length<2 || !hasVideo(h)) return "";
+  return `<div class="vchips" role="group" aria-label="플랫폼별 편집본">${v.map((p,i)=>`<button type="button" class="${i===0?"on":""}" data-vsw="${h.id}" data-vp="${p}">${PSHORT[p]}</button>`).join("")}</div>`;
+}
+document.addEventListener("click", e=>{ const b=e.target.closest("[data-vsw]"); if(!b) return;
+  const scope=b.closest(".sheet")||$("#stage"); const vid=scope.querySelector("video"); if(!vid) return;
+  vid.src=vsrc(b.dataset.vsw,b.dataset.vp); vid.play().catch(()=>{});
+  [...b.parentNode.children].forEach(x=>x.classList.toggle("on",x===b)); });
+function uploadButtons(h){
+  if (!["review","ready","partial"].includes(h.status)) return "";
+  const label = S.job.kind==="upload" ? "올리는 중…" : h.status==="partial" ? "실패한 곳 다시 올리기" : "확인하고 올리기";
+  return `<div class="actions"><button class="primary" data-upload="${h.id}" ${S.job.running?"disabled":""}>${label}</button><button class="secondary" data-skip="${h.id}">보류</button></div>`;
+}
+function heroHTML(){
+  const h=S.history[0];
+  if (!h) return `<div class="frame" style="max-height:40vh"><div class="blank"><b>아직 만든 영상이 없어요</b><span>아래에서 첫 영상을 만들어 보세요.</span></div></div>`;
+  if (h.status==="generating"){ const st=currentStep();
+    return `<div class="frame" style="max-height:34vh"><div class="blank"><b>${esc(h.topic||"오늘의 주제를 정하는 중")}</b><span>영상을 만들고 있어요</span></div>${seal(h)}</div>
+      <ol class="steps">${(h.mode_kind==="character"||(!h.mode_kind&&S.cast.length)?STEPS_CHAR:STEPS_SCENE).map((s,i)=>`<li class="${i<st?"done":i===st?"now":""}">${s}</li>`).join("")}</ol>`; }
+  return `<div class="frame">${hasVideo(h)?`<video src="/media/${h.id}/final_short.mp4" poster="/media/${h.id}/thumb.jpg" controls playsinline preload="none"></video>`
+      :`<div class="blank"><b>만들지 못했어요</b><span>${esc(h.error||"")}</span></div>`}${seal(h,"SEALX")}</div>
+    <div class="t-title">${esc(h.topic||"")}</div>
+    <div class="t-meta">${when(h.id)} ${h.trigger==="schedule"?"자동으로":"직접"} 만듦${h.veo_used===false?" · 예비 배경 사용":""}</div>
+    ${variantChips(h)}
+    ${uploadButtons(h)}
+    ${h.status==="failed"?`<div class="actions"><button class="primary" data-make ${S.job.running?"disabled":""}>다시 만들기</button></div>`:""}
+    ${resultsHTML(h)}
+    ${h.content?`<button class="linkbtn" data-open="${h.id}">대본과 캡션 보기</button>`:""}`;
+}
+function renderToday(){
+  const h0=S.history[0];
+  const key=JSON.stringify([h0,S.job,h0&&h0.status==="generating"?currentStep():0]);
+  if (key!==lastHero){ lastHero=key;
+    const sk=h0?h0.id+h0.status:"";
+    $("#stage").innerHTML=heroHTML().replace("SEALX", sk!==lastSeal&&lastSeal!==""?"stamp":"");
+    lastSeal=sk; }
+  const past=S.history.slice(1);
+  const sk2=JSON.stringify(past.map(h=>[h.id,h.status,h.topic]));
+  if (sk2!==lastStrip){ lastStrip=sk2;
+    $("#strip").innerHTML = past.length ? past.map(h=>`<button data-open="${h.id}"><div class="th" ${hasVideo(h)?`style="background-image:url('/media/${h.id}/thumb.jpg')"`:""}>
+      <span class="mini ${QUIET.has(h.status)?"quiet":""}">${SEAL[h.status]||"?"}</span></div><div class="cap">${esc(h.topic||"제목 없음")}</div><div class="d">${when(h.id)}</div></button>`).join("")
+      : `<p class="note" style="margin:0">오늘 영상 이전 기록이 여기에 쌓여요.</p>`; }
+  $("#log").textContent = S.logs.length ? S.logs.join("\n") : "아직 기록이 없어요.";
+  $("#makeBtn").disabled=S.job.running; $("#makeBtn").textContent=S.job.running?"작업 중":"만들기";
+}
+
+/* 달력 */
+function renderPlan(){
+  if (document.activeElement?.dataset?.date) return;
+  const plan=S.config.plan||{};
+  const key=JSON.stringify([plan, S.today, S.history.map(h=>[h.date,h.status,h.topic])]);
+  if (key===lastPlan) return; lastPlan=key;
+  $("#days").innerHTML = [0,1,2,3,4,5,6].map(i=>{
+    const iso=addDays(S.today,i); const d=new Date(iso+"T00:00:00");
+    const made=S.history.find(h=>h.date===iso && !["failed","generating"].includes(h.status));
+    return `<div class="day ${i===0?"today":""}"><div class="when"><b>${d.getDate()}</b><span>${i===0?"오늘":DOW[d.getDay()]+"요일"}</span></div>
+      <div><input class="field" data-date="${iso}" value="${esc(plan[iso]||"")}" placeholder="비워두면 AI가 정해요" aria-label="${d.getMonth()+1}월 ${d.getDate()}일 주제">
+      ${made?`<div class="made">만든 영상 · <a data-open="${made.id}">${esc(made.topic)}</a></div>`:""}</div></div>`; }).join("");
+}
+document.addEventListener("change", async e => {
+  const d=e.target.dataset?.date; if(!d) return;
+  const plan={...S.config.plan}; const v=e.target.value.trim(); if(v) plan[d]=v; else delete plan[d];
+  try { await api("/api/config",{plan}); S.config.plan=plan; toast(v?"주제를 저장했어요":"그날은 AI가 정해요"); } catch(err){ toast(err.message); }
+});
+$("#fillPlan").onclick = async () => {
+  const b=$("#fillPlan"); b.disabled=true; b.textContent="주제 고르는 중…";
+  try { const r=await api("/api/plan/suggest",{days:7}); S.config.plan=r.plan; lastPlan=""; renderPlan(); toast("빈 날을 채웠어요"); }
+  catch(err){ toast(err.message); } finally { b.disabled=false; b.textContent="빈 날 주제 AI로 채우기"; }
+};
+
+/* 성과 */
+function totals(list){ const t={views:0,likes:0,comments:0}; list.forEach(h=>Object.values(h.metrics||{}).forEach(m=>{t.views+=m.views||0;t.likes+=m.likes||0;t.comments+=m.comments||0;})); return t; }
+function renderStats(){
+  const key=JSON.stringify([S.history.map(h=>[h.id,h.metrics]), S.metrics_running, S.config.metrics_at]);
+  if (key===lastStats) return; lastStats=key;
+  const at=S.config.metrics_at;
+  $("#metricsAt").textContent = S.metrics_running ? "업데이트 중…" : at ? `${+at.slice(5,7)}월 ${+at.slice(8,10)}일 ${at.slice(11,16)} 기준` : "";
+  const withM=S.history.filter(h=>h.metrics && Object.keys(h.metrics).length);
+  if (!withM.length){
+    $("#statsBody").innerHTML=`<h2>아직 모인 성과가 없어요</h2><p class="note">영상을 올리면 인스타그램·유튜브·X의 조회수와 좋아요, 댓글이 여기에 모여요. 오전 7시와 오후 7시에 자동으로 업데이트돼요.</p>`;
+    return;
+  }
+  const cutIso=addDays(S.today,-6), prevIso=addDays(S.today,-13);
+  const week=withM.filter(h=>h.date>=cutIso), prev=withM.filter(h=>h.date>=prevIso && h.date<cutIso);
+  const tw=totals(week), tp=totals(prev);
+  const avgW = week.length ? tw.views/week.length : 0, avgP = prev.length ? tp.views/prev.length : 0;
+  const diff = avgP ? Math.round((avgW-avgP)/avgP*100) : null;
+  const recent=withM.slice(0,14).reverse();
+  const max=Math.max(1,...recent.map(h=>totals([h]).views));
+  const W=440,H=200,L=34,B=22,T=10, step=(W-L)/recent.length, bw=Math.min(22,step*0.62), ph=H-B-T;
+  const bars=recent.map((h,i)=>{ let y=H-B; const x=L+i*step+(step-bw)/2;
+    const segs=["youtube","instagram","tiktok","x"].map(p=>{ const v=h.metrics?.[p]?.views||0; if(!v) return ""; const hh=v/max*ph; y-=hh;
+      return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${hh.toFixed(1)}" fill="${PCOLOR[p]}"><title>${PLAT[p]} ${num(v)}</title></rect>`; }).join("");
+    return segs+`<text x="${(x+bw/2).toFixed(1)}" y="${H-6}" font-size="11" text-anchor="middle" fill="#8D939A">${+h.date.slice(8)}일</text>`; }).join("");
+  const fmt=v=>v>=10000?(v/10000).toFixed(v>=100000?0:1)+"만":v>=1000?(v/1000).toFixed(v>=10000?0:1)+"천":Math.round(v);
+  const grid=[0.5,1].map(f=>{ const y=H-B-f*ph; return `<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="#C6CDD0" stroke-dasharray="2 3"/><text x="${L-6}" y="${y+4}" font-size="10" text-anchor="end" fill="#8D939A">${fmt(max*f)}</text>`; }).join("")+
+    `<line x1="${L}" x2="${W}" y1="${H-B}" y2="${H-B}" stroke="#8D939A"/>`;
+  const top3=[...withM].sort((a,b)=>totals([b]).views-totals([a]).views).slice(0,3);
+  $("#statsBody").innerHTML=`
+    <p class="lead">지난 7일 동안 영상 ${week.length}편이 <b>조회수 ${num(tw.views)}회</b>를 얻었어요.${diff===null?"":diff===0?" 편당 조회수는 그 전 주와 같아요.":diff>0?` 편당 조회수가 그 전 주보다 ${diff}% 늘었어요.`:` 편당 조회수가 그 전 주보다 ${-diff}% 줄었어요.`}</p>
+    <div class="facts"><div><b>${num(tw.likes)}</b>좋아요</div><div><b>${num(tw.comments)}</b>댓글</div><div><b>${week.length?num(Math.round(tw.views/week.length)):0}</b>편당 조회</div></div>
+    <div class="chart"><h2 style="font-size:16px;margin:0 0 6px">영상별 조회수</h2>
+      <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="최근 영상별 조회수 막대그래프">${grid}${bars}</svg>
+      <div class="legend">${["youtube","instagram","tiktok","x"].filter(p=>recent.some(h=>h.metrics?.[p])).map(p=>`<span><i style="background:${PCOLOR[p]}"></i>${PLAT[p]}</span>`).join("")}</div></div>
+    <div class="sec" style="margin-top:30px"><h2 style="font-size:16px">반응이 좋았던 영상</h2><ol class="rank">${top3.map(h=>{const t=totals([h]);
+      return `<li data-open="${h.id}"><div class="th" style="background-image:url('/media/${h.id}/thumb.jpg')"></div><div class="t">${esc(h.topic)}</div><div class="n"><b>${num(t.views)}</b>댓글 ${num(t.comments)}</div></li>`;}).join("")}</ol>
+      <p class="note">반응이 좋았던 주제와 비슷한 주제를 달력에 넣어 보세요.</p></div>`;
+}
+$("#refreshMetrics").onclick = async () => { try { await api("/api/metrics/refresh",{}); toast("성과를 업데이트하고 있어요"); lastStats=""; await refreshNow(); } catch(err){ toast(err.message); } };
+
+/* 상세 */
+function copyRow(t,x){ return `<div class="copyrow"><div class="h"><span>${t}</span><button class="linkbtn" data-copy="${esc(x)}">복사</button></div><p>${esc(x)}</p></div>`; }
+function renderDetail(){
+  const h=S.history.find(x=>x.id===detailId); if(!h) return;
+  const c=h.content||{}, ig=c.instagram||{}, x=c.x||{}, yt=c.youtube||{};
+  const key=JSON.stringify([h,S.job.running]); if($("#dBody").dataset.key===key) return; $("#dBody").dataset.key=key;
+  $("#dTitle").textContent=when(h.id);
+  $("#dBody").innerHTML=`<div style="height:18px"></div>
+    <div class="frame" style="max-height:52vh">${hasVideo(h)?`<video src="/media/${h.id}/final_short.mp4" poster="/media/${h.id}/thumb.jpg" controls playsinline preload="none"></video>`:`<div class="blank"><b>영상이 없어요</b><span>${esc(h.error||"")}</span></div>`}${seal(h)}</div>
+    <div class="t-title">${esc(h.topic||"")}</div>${variantChips(h)}${uploadButtons(h)}${resultsHTML(h)}<div style="height:8px"></div>
+    ${c.lines?copyRow("대사",c.lines.map(l=>`${S.config.characters[l.speaker]?.name||l.speaker}: ${l.text}`).join("\n")):c.narration?copyRow("대본",c.narration.join("\n")):""}
+    ${ig.caption?copyRow("인스타 캡션",ig.caption+"\n\n"+(ig.hashtags||[]).join(" ")):""}
+    ${ig.auto_dm?copyRow("인스타 자동 DM",ig.auto_dm):""}
+    ${x.tweet?copyRow("X 게시글",x.tweet):""}${x.auto_dm?copyRow("X 자동 DM",x.auto_dm):""}
+    ${yt.title?copyRow("유튜브 제목",yt.title):""}
+    ${yt.pinned_comment?copyRow("유튜브 고정 댓글 (스튜디오에서 '고정'을 눌러 주세요)",yt.pinned_comment):""}
+    ${c.scenes?copyRow("장면 프롬프트",c.scenes.join("\n\n")):""}`;
+}
+
+/* 공용 폼 조각 (설정·마법사) */
+function infoForm(p){ const c=S.config.shindang; return `
+  <div class="item"><label for="${p}name">신당 이름</label><input class="field" id="${p}name" value="${esc(c.name)}"></div>
+  <div class="item"><label for="${p}features">특징 (분위기, 전문 분야, 상담 방식)</label><textarea class="field" id="${p}features">${esc(c.features)}</textarea></div>
+  <div class="item"><label for="${p}location">지역</label><input class="field" id="${p}location" value="${esc(c.location)}"></div>
+  <div class="item"><label for="${p}keyword">댓글 키워드 (시청자가 댓글로 남길 말)</label><input class="field" id="${p}keyword" value="${esc(c.keyword)}"></div>
+  <div class="item"><label for="${p}link">예약 링크 (카카오톡 채널 등)</label><input class="field" id="${p}link" inputmode="url" value="${esc(c.link)}"></div>`; }
+function readInfo(p){ return { name:$(`#${p}name`).value.trim(), features:$(`#${p}features`).value.trim(), location:$(`#${p}location`).value.trim(), keyword:$(`#${p}keyword`).value.trim(), link:$(`#${p}link`).value.trim() }; }
+
+function brandForm(p){ const b=S.config.brand; const logo=S.has_logo?`/brand/logo?v=${logoVer}`:""; return `
+  <div class="item"><span class="lbl">로고</span><div class="logo-row">
+    <div class="logo-box" style="${logo?`background-image:url('${logo}')`:""}">${logo?"":"없음"}</div>
+    <div><input type="file" accept="image/png,image/jpeg" id="${p}logo" hidden>
+      <button class="secondary" type="button" data-pick="${p}logo">이미지 고르기</button>${logo?` <button class="linkbtn" data-dellogo>지우기</button>`:""}
+      <p class="note">PNG 또는 JPG, 5MB 이하. 배경이 투명하면 더 깔끔해요.</p></div></div></div>
+  <div class="item"><span class="lbl">대표색 (버튼과 도장에 쓰여요)</span><div class="swatches" id="${p}sw">${SWATCH.map(([c,n])=>`<button type="button" style="background:${c}" data-color="${c}" aria-label="${n}" class="${b.accent.toLowerCase()===c.toLowerCase()?"on":""}"></button>`).join("")}</div></div>
+  <div class="item"><label for="${p}seal">도장 글자 (두 글자, 로고가 없을 때 쓰여요)</label><input class="field" id="${p}seal" maxlength="2" value="${esc(b.seal)}" placeholder="${esc(S.config.shindang.name.replace(/\s/g,"").slice(0,2))}"></div>
+  <div class="toggle"><span>영상 끝 3초에 엔딩 화면 넣기</span><span class="sw"><input type="checkbox" id="${p}endcard" ${b.end_card?"checked":""} aria-label="엔딩 화면"><span></span></span></div>
+  <div class="item"><label for="${p}cta">엔딩 화면 문구</label><input class="field" id="${p}cta" value="${esc(b.cta)}">
+    <div class="endprev" aria-label="엔딩 화면 미리보기"><div class="card">${logo?`<img src="${logo}" alt="">`:""}<b>${esc(S.config.shindang.name)}</b><span id="${p}ctaPrev">${esc(b.cta)}</span></div></div></div>`; }
+let logoVer=Date.now();
+function bindBrand(p){
+  $(`#${p}sw`).onclick=e=>{ const c=e.target.dataset.color; if(!c) return; $$(`#${p}sw button`).forEach(x=>x.classList.toggle("on",x===e.target)); document.documentElement.style.setProperty("--accent",c); };
+  $(`#${p}cta`).oninput=e=>{ $(`#${p}ctaPrev`).textContent=e.target.value; };
+  $(`#${p}logo`).onchange=async e=>{ const f=e.target.files[0]; if(!f) return; const fd=new FormData(); fd.append("logo",f);
+    try { await api("/api/brand/logo",fd,true); S.has_logo=true; logoVer=Date.now(); toast("로고를 올렸어요"); rerenderBrand(); } catch(err){ toast(err.message); } };
+}
+function readBrand(p){ return { accent:$(`#${p}sw .on`)?.dataset.color||S.config.brand.accent, seal:$(`#${p}seal`).value.trim(), cta:$(`#${p}cta`).value.trim(), end_card:$(`#${p}endcard`).checked }; }
+function rerenderBrand(){
+  if (wzOpen && wz===1){ const keep=readBrand("w_"); S.config.brand={...S.config.brand,...keep}; renderWizard(); }
+  else if ($("#settings").classList.contains("on")){ const keep=readBrand("s_"); S.config.brand={...S.config.brand,...keep}; $('[data-slot="brand"]').innerHTML=brandForm("s_"); bindBrand("s_"); }
+}
+
+function stLine(svc, fallback){ const c=connStatus[svc]; if(c) return `<div class="st ${c.ok?"ok":"no"}">${esc((c.ok?"✓ ":"")+c.detail)}</div>`;
+  return `<div class="st">${fallback||""}</div>`; }
+function connAI(p){ return AI_CONN.map(([svc,key,name,what,url])=>`<div class="conn"><b>${name}</b> <span class="help">· ${what} · <a href="${url}" target="_blank" rel="noopener">키 발급</a></span>
+  <div class="row"><input class="field" type="password" autocomplete="off" id="${p}k_${key}" placeholder="${esc(S.secrets[key]||"키 붙여넣기")}" aria-label="${name} 키"><button class="secondary" type="button" data-test="${svc}" data-p="${p}">연결 확인</button></div>
+  ${stLine(svc, S.secrets[key]?"저장된 키가 있어요":"")}</div>`).join(""); }
+function connSNS(p){ return SNS_CONN.map(([svc,keys,name,what,url])=>`<div class="conn"><b>${name}</b> <span class="help">· ${what} · <a href="${url}" target="_blank" rel="noopener">안내</a></span>
+  ${keys.map(([k,l])=>`<div class="row"><input class="field" type="password" autocomplete="off" id="${p}k_${k}" placeholder="${esc(S.secrets[k]||l)}" aria-label="${l}"></div>`).join("")}
+  <div class="row"><button class="secondary" type="button" data-test="${svc}" data-p="${p}">연결 확인</button></div>${stLine(svc, keys.every(([k])=>S.secrets[k])?"저장된 정보가 있어요":"")}</div>`).join("")+
+  `<div class="conn"><b>유튜브</b> <span class="help">· 이 컴퓨터에서 <b>python youtube_login.py</b>를 한 번 실행해 로그인해요</span>
+  <div class="row"><button class="secondary" type="button" data-test="youtube" data-p="${p}">연결 확인</button></div>${stLine("youtube", S.youtube_connected?"로그인 정보가 있어요":"아직 로그인 안 됨")}</div>`; }
+function readKeys(p){ const out={}; [...AI_CONN.map(a=>a[1]),"IG_USER_ID","IG_ACCESS_TOKEN","X_USER_ACCESS_TOKEN","TIKTOK_CLIENT_KEY","TIKTOK_CLIENT_SECRET"].forEach(k=>{ const el=$(`#${p}k_${k}`); if(el&&el.value.trim()) out[k]=el.value.trim(); }); return out; }
+
+async function testConn(svc,p,btn){
+  const keys=readKeys(p); const box=btn.closest(".conn"); const st=box.querySelector(".st"); st.className="st wait"; st.textContent="확인하는 중…"; btn.disabled=true;
+  try { if(Object.keys(keys).length){ await api("/api/secrets",keys); Object.keys(keys).forEach(k=>{ const el=$(`#${p}k_${k}`); if(el){ el.value=""; } }); }
+    const r=await api(`/api/test/${svc}`,{}); connStatus[svc]=r; st.className="st "+(r.ok?"ok":"no"); st.textContent=(r.ok?"✓ ":"")+r.detail;
+    S=await api("/api/state");
+    box.querySelectorAll("input.field").forEach(el=>{ const k=el.id.replace(p+"k_",""); if(S.secrets[k]) el.placeholder=S.secrets[k]; });
+    if(svc==="elevenlabs"&&r.ok&&p==="w_") loadVoices("wVoices");
+  } catch(err){ st.className="st no"; st.textContent=err.message; } finally { btn.disabled=false; }
+}
+
+async function loadVoices(target){
+  const box=$("#"+target); box.innerHTML=`<p class="note">목소리 목록을 불러오는 중…</p>`;
+  try { const {voices}=await api("/api/voices"); const sel=new Set(S.config.voice_ids||[]);
+    box.dataset.ids=[...sel].join(",");
+    box.innerHTML=`<p class="note">3~5개 고르면 매일 돌아가며 써요. ▶로 미리 들어보세요.</p><div class="voices">${voices.map(v=>`<label class="voice">
+      <input type="checkbox" value="${esc(v.id)}" ${sel.has(v.id)?"checked":""}><span class="nm">${esc(v.name)}<small>${esc(v.desc)}</small></span>
+      ${v.preview?`<button type="button" data-play="${esc(v.preview)}" aria-label="${esc(v.name)} 미리듣기">▶</button>`:""}</label>`).join("")}</div>`;
+    box.onchange=()=>{ const ids=[...box.querySelectorAll("input:checked")].map(i=>i.value); box.dataset.ids=ids.join(","); if(target==="voicePickS") $("#c_voices").value=ids.join("\n"); };
+  } catch(err){ box.innerHTML=`<p class="st no">${esc(err.message)}</p>`; }
+}
+let audio=null;
+document.addEventListener("click", e=>{ const b=e.target.closest("[data-play]"); if(!b) return; e.preventDefault(); if(audio) audio.pause(); audio=new Audio(b.dataset.play); audio.play().catch(()=>toast("미리듣기를 재생하지 못했어요")); });
+
+/* 진행 캐릭터 */
+let voiceCache=null;
+async function ensureVoices(){ if(voiceCache||!S.secrets.ELEVENLABS_API_KEY) return voiceCache; try { voiceCache=(await api("/api/voices")).voices; } catch(_){ voiceCache=null; } return voiceCache; }
+function charMediaHTML(p,cid){
+  const v=S.char_images[cid], busy=S.char_busy.includes(cid), cands=S.char_candidates[cid]||[];
+  return `<div class="char-img ${S.config.characters[cid].on?"":"off"}" style="${v?`background-image:url('/characters/${cid}.png?v=${v}')`:""}">${v?"":busy?"만드는 중…":"이미지 없음"}</div>`;
+}
+function charCandsHTML(cid){
+  const cands=S.char_candidates[cid]||[], busy=S.char_busy.includes(cid);
+  if(busy) return `<p class="note" style="margin:8px 0 0">후보 이미지를 만들고 있어요. 30초쯤 걸려요.</p>`;
+  if(!cands.length) return "";
+  return `<p class="note" style="margin:10px 0 0">마음에 드는 이미지를 골라주세요.</p><div class="cands">${cands.slice(0,4).map(n=>`<div class="cand"><img src="/characters/${n}" alt="${esc(S.config.characters[cid].name)} 후보"><button type="button" class="secondary" data-cpick="${cid}" data-name="${n}">이걸로</button></div>`).join("")}</div>`;
+}
+function voiceField(p,cid){
+  const cur=S.config.characters[cid].voice_id||"";
+  if(voiceCache&&voiceCache.length) return `<select class="field small" id="${p}cv_${cid}" aria-label="${esc(S.config.characters[cid].name)} 목소리">
+    <option value="">목소리 목록에서 자동 배정</option>${voiceCache.map(v=>`<option value="${esc(v.id)}" ${v.id===cur?"selected":""}>${esc(v.name)}${v.desc?` · ${esc(v.desc)}`:""}</option>`).join("")}</select>`;
+  return `<input class="field small" id="${p}cv_${cid}" value="${esc(cur)}" placeholder="목소리 ID (비우면 자동 배정)" aria-label="목소리 ID">`;
+}
+function charForm(p){ return CHAR_IDS.map(cid=>{ const c=S.config.characters[cid]; return `
+  <div class="char" data-char="${cid}">
+    <div class="char-media" data-cmedia="${cid}">${charMediaHTML(p,cid)}</div>
+    <div>
+      <div class="char-top"><input class="field" id="${p}cn_${cid}" value="${esc(c.name)}" aria-label="캐릭터 이름"><span class="sw"><input type="checkbox" id="${p}con_${cid}" ${c.on?"checked":""} aria-label="${esc(c.name)} 등장"><span></span></span></div>
+      <div style="margin-top:8px" data-cvoice="${cid}">${voiceField(p,cid)}</div>
+      <div class="btns">
+        <button type="button" class="secondary" data-cgen="${cid}" data-p="${p}" ${S.char_busy.includes(cid)?"disabled":""}>AI로 이미지 만들기</button>
+        <input type="file" accept="image/png,image/jpeg,image/webp" id="${p}cf_${cid}" data-cup="${cid}" hidden>
+        <button type="button" class="secondary" data-pick="${p}cf_${cid}">이미지 올리기</button>
+      </div>
+      <div data-ccands="${cid}">${charCandsHTML(cid)}</div>
+      <details class="more"><summary>말투·움직임·이미지 설명 바꾸기</summary>
+        <div class="item"><label for="${p}cr_${cid}">역할·말투</label><textarea class="field small" id="${p}cr_${cid}">${esc(c.role)}</textarea></div>
+        <div class="item"><label for="${p}cm_${cid}">움직임 (손짓·소품, 영어로)</label><textarea class="field small" id="${p}cm_${cid}">${esc(c.motion||"")}</textarea></div>
+        <div class="item" style="border:0"><label for="${p}cp_${cid}">이미지 설명 (영어로 쓰면 결과가 더 좋아요)</label><textarea class="field small" id="${p}cp_${cid}" style="min-height:120px">${esc(c.prompt)}</textarea></div>
+      </details>
+    </div>
+  </div>`; }).join("") + `<p class="note">정면을 보는 상반신 이미지여야 입 모양이 잘 맞아요. 실사 캐릭터는 모두 가상 인물이고, 캡션에 'AI 캐릭터'라고 표시돼요.</p>`; }
+function readChars(p){ const out={}; CHAR_IDS.forEach(cid=>{ const n=$(`#${p}cn_${cid}`); if(!n) return;
+  out[cid]={ name:n.value.trim()||S.config.characters[cid].name, on:$(`#${p}con_${cid}`).checked, voice_id:$(`#${p}cv_${cid}`).value.trim(),
+             role:$(`#${p}cr_${cid}`).value.trim(), prompt:$(`#${p}cp_${cid}`).value.trim(), motion:$(`#${p}cm_${cid}`).value.trim() }; }); return out; }
+function soloOptions(){ const c=S.config; return CHAR_IDS.map(id=>`<option value="${id}" ${c.solo_id===id?"selected":""}>${esc(c.characters[id].name)}</option>`).join(""); }
+let lastCharKey="";
+function refreshCharMedia(){
+  const key=JSON.stringify([S.char_images,S.char_candidates,S.char_busy]); if(key===lastCharKey) return; lastCharKey=key;
+  $$("[data-cmedia]").forEach(el=>{ el.innerHTML=charMediaHTML("",el.dataset.cmedia); });
+  $$("[data-ccands]").forEach(el=>{ el.innerHTML=charCandsHTML(el.dataset.ccands); });
+  $$("[data-cgen]").forEach(b=>{ b.disabled=S.char_busy.includes(b.dataset.cgen); });
+}
+async function loadCharVoices(p){ if(await ensureVoices()) $$("[data-cvoice]").forEach(el=>{ const cid=el.dataset.cvoice; const cur=$(`#${p}cv_${cid}`)?.value; S.config.characters[cid].voice_id=cur||S.config.characters[cid].voice_id; el.innerHTML=voiceField(p,cid); }); }
+document.addEventListener("change", async e=>{
+  const cid=e.target.dataset?.cup; if(!cid) return; const f=e.target.files[0]; if(!f) return;
+  const fd=new FormData(); fd.append("image",f);
+  try { await api(`/api/characters/${cid}/upload`,fd,true); toast("이미지를 올렸어요"); S=await api("/api/state"); lastCharKey=""; refreshCharMedia(); } catch(err){ toast(err.message); }
+});
+
+/* 올릴 곳 + 라이선스 */
+function platRows(attr){ const c=S.config, lic=S.license.platforms; return Object.keys(PLAT).map(p=>{
+  const locked=!lic.includes(p), base=p==="instagram";
+  return `<div class="toggle ${locked?"locked":""}"><span>${PLAT[p]}${base?" (기본)":""}</span>${locked?`<span class="lock">옵션 · 추가 신청</span>`:
+    `<span class="sw"><input type="checkbox" ${attr}="${p}" ${base||c.platforms[p]?"checked":""} ${base?"disabled":""} aria-label="${PLAT[p]}에 올리기"><span></span></span>`}</div>`; }).join("")
+  + (Object.keys(PLAT).some(p=>!lic.includes(p))?`<p class="note">유튜브·틱톡·X는 옵션이에요. 추가하시면 받은 라이선스 파일을 올려주세요.</p>`:""); }
+function readPlats(attr){ const out={instagram:true}; $$(`[${attr}]`).forEach(i=>out[i.getAttribute(attr)]=i.checked); return out; }
+function licHTML(){ const L=S.license;
+  return `<div class="lic">${L.valid?`<b>${esc(L.customer)}</b> · ${L.platforms.map(p=>PSHORT[p]).join(", ")}${L.expires?` · ${esc(L.expires)}까지`:""}`:`${esc(L.message)} · 지금은 인스타그램만 쓸 수 있어요`}
+    <div style="margin-top:8px"><input type="file" accept="application/json,.json" id="licFile" hidden><button type="button" class="linkbtn" style="padding:0" data-pick="licFile">라이선스 파일 올리기</button></div></div>`; }
+document.addEventListener("change", async e=>{ if(e.target.id!=="licFile") return; const f=e.target.files[0]; if(!f) return;
+  const fd=new FormData(); fd.append("license",f);
+  try { await api("/api/license",fd,true); S=await api("/api/state"); $("#licBox").innerHTML=licHTML(); $("#platRowsS").innerHTML=platRows("data-plat"); toast("라이선스를 적용했어요"); }
+  catch(err){ toast(err.message); } });
+
+/* 설정 */
+function fillSettings(){
+  const c=S.config; $("#c_schedule").checked=c.schedule_enabled; $("#c_time").value=c.schedule_time;
+  $$('[data-choice="mode"] button').forEach(b=>b.classList.toggle("on",b.dataset.v===c.upload_mode));
+  $("#licBox").innerHTML=licHTML(); $("#platRowsS").innerHTML=platRows("data-plat");
+  $("#c_topic").value=c.topic_fixed||""; $("#c_voices").value=(c.voice_ids||[]).join("\n"); $("#c_veo").value=c.veo_model; $("#c_font").value=c.sub_font;
+  $("#voicePickS").innerHTML="";
+  $('[data-slot="info"]').innerHTML=infoForm("s_"); $('[data-slot="brand"]').innerHTML=brandForm("s_"); bindBrand("s_");
+  $('[data-slot="conn-ai"]').innerHTML=connAI("s_"); $('[data-slot="conn-sns"]').innerHTML=connSNS("s_");
+  $("#c_charmode").checked=!!c.character_mode;
+  $$('[data-choice="cast"] button').forEach(b=>b.classList.toggle("on",b.dataset.v===(c.cast_mode||"ensemble"))); $("#c_solo").innerHTML=soloOptions();
+  $$('[data-choice="subs"] button').forEach(b=>b.classList.toggle("on",b.dataset.v===(c.subtitle_mode||"chunk"))); $('[data-slot="chars"]').innerHTML=charForm("s_"); lastCharKey=""; loadCharVoices("s_");
+  $$('[data-choice="avatar"] button').forEach(b=>b.classList.toggle("on",b.dataset.v===c.avatar_model));
+}
+document.addEventListener("click", e=>{ const b=e.target.closest(".choice button"); if(!b) return; [...b.parentNode.children].forEach(x=>x.classList.toggle("on",x===b)); });
+$("#openSettings").onclick=()=>{ fillSettings(); openSheet("settings"); };
+$("#pickVoices").onclick=()=>loadVoices("voicePickS");
+$("#rerunWizard").onclick=()=>{ closeSheets(); openWizard(); };
+$("#saveAll").onclick=async()=>{
+  const platforms=readPlats("data-plat");
+  try { await api("/api/config",{ shindang:readInfo("s_"), brand:readBrand("s_"), schedule_enabled:$("#c_schedule").checked, schedule_time:$("#c_time").value,
+      upload_mode:$('[data-choice="mode"] .on')?.dataset.v||"review", platforms, topic_fixed:$("#c_topic").value, voice_ids:$("#c_voices").value, veo_model:$("#c_veo").value, sub_font:$("#c_font").value,
+      character_mode:$("#c_charmode").checked, characters:readChars("s_"),
+      cast_mode:$('[data-choice="cast"] .on')?.dataset.v||"ensemble", solo_id:$("#c_solo").value, subtitle_mode:$('[data-choice="subs"] .on')?.dataset.v||"chunk", avatar_model:$('[data-choice="avatar"] .on')?.dataset.v||S.config.avatar_model });
+    const keys=readKeys("s_"); if(Object.keys(keys).length) await api("/api/secrets",keys);
+    toast("설정을 저장했어요"); await refreshNow(); closeSheets(); } catch(err){ toast(err.message); }
+};
+
+/* 처음 설정 마법사 */
+const WZ=[
+  { t:"신당을 소개해 주세요", d:"영상 대본과 캡션에 이 정보가 들어가요.", body:()=>infoForm("w_"),
+    save:async()=>{ const s=readInfo("w_"); if(!s.name) throw new Error("신당 이름을 적어주세요"); await api("/api/config",{shindang:s}); } },
+  { t:"신당의 얼굴을 정해요", d:"로고와 대표색은 이 앱과 영상 마지막 화면에 쓰여요. 나중에 바꿀 수 있어요.", body:()=>brandForm("w_"), bind:()=>bindBrand("w_"),
+    save:async()=>api("/api/config",{brand:readBrand("w_")}) },
+  { t:"AI를 연결해요", d:"키를 붙여넣고 '연결 확인'을 누르세요. 요금은 각 서비스에서 따로 나가요. fal.ai는 캐릭터가 말하는 영상에만 필요해요.",
+    body:()=>connAI("w_")+`<div class="group"><h3>목소리 고르기</h3><div id="wVoices"><p class="note">ElevenLabs 연결을 확인하면 목소리 목록이 나와요.</p></div></div>`,
+    bind:()=>{ if(connStatus.elevenlabs?.ok) loadVoices("wVoices"); },
+    save:async()=>{ const k=readKeys("w_"); if(Object.keys(k).length) await api("/api/secrets",k);
+      const ids=$("#wVoices")?.dataset.ids; if(ids!==undefined) await api("/api/config",{voice_ids:ids.split(",").filter(Boolean)}); } },
+  { t:"진행 캐릭터를 정해요", d:"애기동자, 선비, 선녀, 무당 중에서 고르세요. 여럿이 번갈아 말하거나 한 명이 혼자 진행할 수 있어요. 'AI로 이미지 만들기'로 고른 얼굴은 매일 같은 얼굴로 나와요.",
+    body:()=>`<div class="toggle"><span>캐릭터가 말하는 영상으로 만들기</span><span class="sw"><input type="checkbox" id="w_charmode" ${S.config.character_mode?"checked":""} aria-label="캐릭터 영상"><span></span></span></div>
+      <div class="item"><span class="lbl">진행 방식</span><div class="choice" id="w_cast"><button type="button" data-v="ensemble" class="${S.config.cast_mode!=="solo"?"on":""}">여럿이 번갈아</button><button type="button" data-v="solo" class="${S.config.cast_mode==="solo"?"on":""}">한 명이 혼자</button></div>
+      <label for="w_solo" class="lbl" style="margin-top:10px">혼자 진행할 캐릭터</label><select class="field small" id="w_solo">${soloOptions()}</select></div>${charForm("w_")}`,
+    bind:()=>{ lastCharKey=""; loadCharVoices("w_"); },
+    save:async()=>api("/api/config",{character_mode:$("#w_charmode").checked, characters:readChars("w_"), cast_mode:$("#w_cast .on")?.dataset.v||"ensemble", solo_id:$("#w_solo").value}), optional:true },
+  { t:"올릴 곳을 연결해요", optional:true, d:"지금 안 해도 돼요. 연결 안 된 곳은 영상만 만들고, 캡션은 복사해서 직접 올릴 수 있어요.", body:()=>connSNS("w_"),
+    save:async()=>{ const k=readKeys("w_"); if(Object.keys(k).length) await api("/api/secrets",k); } },
+  { t:"매일 언제 만들까요?", d:"이 컴퓨터가 켜져 있어야 정해진 시간에 만들어져요.",
+    body:()=>{ const c=S.config; return `<div class="toggle"><span>매일 자동으로 만들기</span><span class="sw"><input type="checkbox" id="w_sched" ${c.schedule_enabled?"checked":""} aria-label="매일 자동"><span></span></span></div>
+      <div class="item"><label for="w_time">실행 시각</label><input class="field" type="time" id="w_time" value="${c.schedule_time}"></div>
+      <div class="item"><span class="lbl">만든 뒤에</span><div class="choice" id="w_mode"><button type="button" data-v="review" class="${c.upload_mode==="review"?"on":""}">확인하고 올리기</button><button type="button" data-v="auto" class="${c.upload_mode==="auto"?"on":""}">바로 올리기</button></div>
+      <p class="note">처음 1~2주는 '확인하고 올리기'를 권해요.</p></div>
+      <h3 style="font:700 16px var(--serif);margin:22px 0 0">올릴 곳</h3>${platRows("data-wplat")}`; },
+    save:async()=>{ const platforms=readPlats("data-wplat");
+      await api("/api/config",{schedule_enabled:$("#w_sched").checked, schedule_time:$("#w_time").value, upload_mode:$("#w_mode .on")?.dataset.v||"review", platforms}); } },
+  { t:"준비가 끝났어요", d:"", body:()=>{ const miss=AI_CONN.filter(a=>!connStatus[a[0]]?.ok && !S.secrets[a[1]]).map(a=>a[2]);
+      const mark=S.has_logo?`<div class="brandmark" style="width:96px;height:96px"><img src="/brand/logo?v=${logoVer}" alt=""></div>`:`<div class="brandmark stampmark" style="width:88px;height:88px;font-size:28px"><span>${esc(sealText())}</span></div>`;
+      const noCast = S.config.character_mode && !S.cast.length;
+      return `<div style="display:flex;justify-content:center;margin:30px 0 24px">${mark}</div>${noCast?`<p class="note" style="text-align:center">캐릭터 이미지를 아직 고르지 않아서, 첫 영상은 장면 영상으로 만들어요.</p>`:""}
+      <p class="wz-desc" style="text-align:center">${miss.length?`${miss.join(", ")} 키가 아직 없어요. 영상을 만들려면 이전 단계에서 넣어주세요.`:`${esc(S.config.shindang.name)}의 첫 영상을 만들어 보세요. 10분 안팎이면 확인할 수 있어요.`}</p>`; },
+    save:async()=>{} },
+];
+function openWizard(){ wz=0; wzOpen=true; renderWizard(); openSheet("wizard"); }
+function renderWizard(){
+  const s=WZ[wz];
+  $("#wzProgress").innerHTML=WZ.map((_,i)=>`<i class="${i<=wz?"on":""}"></i>`).join("");
+  $("#wzBody").innerHTML=`<div class="wz-step">${wz+1} / ${WZ.length}</div><h2 class="wz-title">${s.t}</h2>${s.d?`<p class="wz-desc">${s.d}</p>`:""}${s.body()}`;
+  s.bind&&s.bind();
+  $("#wzBack").hidden = wz===0;
+  $("#wzNext").textContent = wz===WZ.length-1 ? "첫 영상 만들기" : WZ[wz].optional ? "다음 (나중에 해도 돼요)" : "다음";
+  $("#wizard").scrollTop=0;
+}
+$("#wzBack").onclick=()=>{ if(wz>0){ wz--; renderWizard(); } };
+$("#wzNext").onclick=async()=>{
+  const b=$("#wzNext"); b.disabled=true;
+  try { await WZ[wz].save(); S=await api("/api/state");
+    if (wz===WZ.length-1){ await api("/api/config",{setup_done:true}); closeSheets(); await api("/api/run",{}); toast("첫 영상을 만들기 시작했어요"); await refreshNow(); }
+    else { wz++; renderWizard(); applyBrand(); }
+  } catch(err){ toast(err.message); } finally { b.disabled=false; }
+};
+
+/* 공통 */
+function openSheet(id){ $("#"+id).classList.add("on"); document.body.style.overflow="hidden"; }
+function closeSheets(){ $$(".sheet").forEach(s=>s.classList.remove("on")); document.body.style.overflow=""; detailId=null; $("#dBody").dataset.key=""; wzOpen=false; lastHero=""; if(S){ applyBrand(); render(); } }
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && !wzOpen) closeSheets(); });
+async function make(){ try { await api("/api/run",{topic:$("#topic").value}); $("#topic").value=""; toast("만들기 시작했어요"); if(tab!=="today") $('.tabs [data-tab="today"]').click(); await refreshNow(); } catch(err){ toast(err.message); } }
+$("#makeBtn").onclick=make;
+
+document.addEventListener("click", async e=>{
+  const t=e.target.closest("[data-open],[data-upload],[data-skip],[data-copy],[data-close],[data-make],[data-test],[data-dellogo],[data-pick],[data-cgen],[data-cpick]"); if(!t) return;
+  if (t.hasAttribute("data-close")) return closeSheets();
+  if (t.hasAttribute("data-make")) return make();
+  if (t.dataset.pick) return $("#"+t.dataset.pick).click();
+  if (t.dataset.cgen){ try { const p=t.dataset.p; await api("/api/config",{characters:readChars(p)}); await api(`/api/characters/${t.dataset.cgen}/generate`,{}); S=await api("/api/state"); lastCharKey=""; refreshCharMedia(); toast("후보 이미지를 만들고 있어요"); } catch(err){ toast(err.message); } return; }
+  if (t.dataset.cpick){ try { await api(`/api/characters/${t.dataset.cpick}/choose`,{name:t.dataset.name}); S=await api("/api/state"); lastCharKey=""; refreshCharMedia(); toast("이 얼굴로 정했어요"); } catch(err){ toast(err.message); } return; }
+  if (t.dataset.test) return testConn(t.dataset.test, t.dataset.p, t);
+  if (t.hasAttribute("data-dellogo")){ try { await api("/api/brand/logo/delete",{}); S.has_logo=false; toast("로고를 지웠어요"); rerenderBrand(); } catch(err){ toast(err.message); } return; }
+  if (t.dataset.copy!==undefined){ try { await navigator.clipboard.writeText(t.dataset.copy); toast("복사했어요"); } catch(_){ toast("복사하지 못했어요. 길게 눌러 복사하세요"); } return; }
+  if (t.dataset.open){ detailId=t.dataset.open; $("#dBody").dataset.key=""; renderDetail(); openSheet("detail"); return; }
+  try { if(t.dataset.upload){ await api(`/api/runs/${t.dataset.upload}/upload`,{}); toast("올리기 시작했어요"); }
+    if(t.dataset.skip){ await api(`/api/runs/${t.dataset.skip}/skip`,{}); toast("보류했어요"); }
+    await refreshNow(); } catch(err){ toast(err.message); }
+});
+
+function applyBrand(){
+  const c=S.config; document.documentElement.style.setProperty("--accent", c.brand.accent);
+  $("#name").textContent=c.shindang.name; document.title=c.shindang.name;
+  const bm=$("#brandmark"); const want=S.has_logo?"logo"+logoVer:"stamp:"+sealText();
+  if (bm.dataset.k!==want){ bm.dataset.k=want; bm.className="brandmark"+(S.has_logo?"":" stampmark");
+    bm.innerHTML=S.has_logo?`<img src="/brand/logo?v=${logoVer}" alt="${esc(c.shindang.name)} 로고">`:`<span>${esc(sealText())}</span>`; }
+}
+function render(){
+  if (wzOpen || $("#settings").classList.contains("on")) refreshCharMedia();
+  const editing = wzOpen || $("#settings").classList.contains("on");
+  if (!editing) applyBrand();
+  const c=S.config; $("#schedDot").classList.toggle("on",c.schedule_enabled);
+  $("#schedText").textContent=c.schedule_enabled?`매일 ${c.schedule_time} · ${c.upload_mode==="auto"?"바로 올리기":"확인하고 올리기"}`:"자동 실행 꺼짐";
+  if (tab==="today") renderToday(); else if (tab==="plan") renderPlan(); else renderStats();
+  if (detailId) renderDetail();
+}
+async function refreshNow(){ S=await api("/api/state"); render(); }
+async function loop(){ try { await refreshNow(); } catch(e){} setTimeout(loop, S&&(S.job.running||S.metrics_running||S.char_busy.length)?2500:8000); }
+(async()=>{ await refreshNow(); if(!S.config.setup_done) openWizard(); loop(); })();
+</script>
+</body>
+</html>

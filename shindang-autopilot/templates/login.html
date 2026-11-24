@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#DCE2E4">
+<title>신당 오토파일럿</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&family=IBM+Plex+Sans+KR:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root { --mist:#DCE2E4; --paper:#F6F5F1; --ink:#1D1F24; --ink-2:#5B6168; --rule:#C6CDD0; --cinnabar:#B3302A; --cyan:#2C5873; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; background:var(--mist); color:var(--ink);
+         font:15px/1.55 "IBM Plex Sans KR","Apple SD Gothic Neo",sans-serif; display:flex; align-items:center; justify-content:center; padding:20px; }
+  form { width:100%; max-width:340px; }
+  .seal { width:62px; height:62px; letter-spacing:0; line-height:1.05; border:3px solid var(--cinnabar); outline:1px solid var(--cinnabar); outline-offset:2px;
+          color:var(--cinnabar); display:grid; place-items:center; font:700 18px/1.05 "Gowun Batang","Noto Serif CJK KR",serif;
+          transform:rotate(-7deg); border-radius:3px; margin-bottom:26px; }
+  .seal span { writing-mode:vertical-rl; }
+  h1 { font:700 26px/1.25 "Gowun Batang",serif; margin:0 0 6px; }
+  p { margin:0 0 22px; color:var(--ink-2); font-size:14px; }
+  input { width:100%; padding:13px 14px; border:1px solid var(--rule); background:var(--paper); border-radius:6px; font-size:16px; }
+  input:focus-visible, button:focus-visible { outline:2px solid var(--cyan); outline-offset:2px; }
+  button { width:100%; margin-top:10px; padding:14px; border:0; border-radius:6px; background:var(--cinnabar); color:#fff; font-weight:600; font-size:16px; cursor:pointer; }
+  .err { color:var(--cinnabar); font-size:14px; margin-top:12px; }
+</style>
+</head>
+<body>
+<form method="post" action="/login">
+  <div class="seal"><span>신당</span></div>
+  <h1>오토파일럿</h1>
+  <p>서버를 켤 때 화면에 나온 비밀번호를 입력하세요.</p>
+  <input type="password" name="password" placeholder="비밀번호" aria-label="비밀번호" autofocus required>
+  <button type="submit">들어가기</button>
+  {% if error %}<div class="err">{{ error }}</div>{% endif %}
+</form>
+</body>
+</html>
