@@ -299,6 +299,12 @@
         <div class="choice" data-choice="cast"><button type="button" data-v="ensemble">여럿이 번갈아</button><button type="button" data-v="solo">한 명이 혼자</button></div>
         <label for="c_solo" class="lbl" style="margin-top:10px">혼자 진행할 캐릭터</label><select class="field small" id="c_solo"></select></div>
       <div data-slot="chars"></div>
+      <div class="item"><span class="lbl">3D 영상 만드는 곳</span>
+        <div class="choice" data-choice="engine"><button type="button" data-v="comfyui">내 컴퓨터 ComfyUI (3D)</button><button type="button" data-v="cloud">클라우드 (fal.ai·Veo)</button></div>
+        <p class="note">ComfyUI를 고르면 GPU 컴퓨터에서 Wan 2.2로 3D 캐릭터가 말하는 영상을 만들어요. ComfyUI가 꺼져 있거나 실패하면 클라우드(키가 있을 때) 또는 정지 화면으로 대신해요.</p>
+        <div class="conn"><label for="c_comfy_url" class="lbl">ComfyUI 주소</label>
+          <div class="row"><input class="field" id="c_comfy_url" placeholder="http://127.0.0.1:8188" autocomplete="off"><button class="secondary" type="button" data-test="comfyui" data-p="s_">연결 확인</button></div>
+          <div class="st"></div></div></div>
       <div class="item"><label for="c_avatar">입 모양 맞추기 모델 (fal.ai)</label>
         <div class="choice" data-choice="avatar"><button type="button" data-v="fal-ai/kling-video/ai-avatar/v2/standard">기본 (초당 약 $0.056)</button><button type="button" data-v="fal-ai/kling-video/ai-avatar/v2/pro">고화질 (초당 약 $0.115)</button></div></div>
     </div>
@@ -348,7 +354,7 @@ const PSHORT = { instagram:"인스타", youtube:"유튜브", tiktok:"틱톡", x:
 const PCOLOR = { youtube:"#B3302A", instagram:"#C8902A", tiktok:"#2E6B4F", x:"#2C5873" };
 const SWATCH = [["#B3302A","주사"],["#2C5873","청"],["#B8862B","황"],["#2E6B4F","녹"],["#1D1F24","먹"],["#7A3B69","자"]];
 const STEPS_SCENE = ["주제와 대본 쓰기","장면 영상 3컷 만들기","목소리 입히기","자막 넣고 합치기","확인 기다리기"];
-const STEPS_CHAR = ["주제와 대사 쓰기","캐릭터 목소리 만들기","캐릭터가 말하는 장면 만들기","자막 넣고 합치기","확인 기다리기"];
+const STEPS_CHAR = ["주제와 대사 쓰기","캐릭터 목소리 만들기","3D 캐릭터가 말하는 장면 만들기","자막 넣고 합치기","확인 기다리기"];
 const CHAR_IDS = ["dongja","seonbi","seonnyeo","mudang"];
 const AI_CONN = [
   ["claude","ANTHROPIC_API_KEY","Claude","대본과 캡션을 써요","https://console.anthropic.com/settings/keys"],
@@ -575,6 +581,7 @@ function connSNS(p){ return SNS_CONN.map(([svc,keys,name,what,url])=>`<div class
 function readKeys(p){ const out={}; [...AI_CONN.map(a=>a[1]),"IG_USER_ID","IG_ACCESS_TOKEN","X_USER_ACCESS_TOKEN","TIKTOK_CLIENT_KEY","TIKTOK_CLIENT_SECRET"].forEach(k=>{ const el=$(`#${p}k_${k}`); if(el&&el.value.trim()) out[k]=el.value.trim(); }); return out; }
 
 async function testConn(svc,p,btn){
+  if(svc==="comfyui"){ const u=$("#c_comfy_url")?.value.trim(); if(u){ try{ await api("/api/config",{comfyui:{url:u}}); }catch(err){ const st=btn.closest(".conn").querySelector(".st"); st.className="st no"; st.textContent=err.message; return; } } }
   const keys=readKeys(p); const box=btn.closest(".conn"); const st=box.querySelector(".st"); st.className="st wait"; st.textContent="확인하는 중…"; btn.disabled=true;
   try { if(Object.keys(keys).length){ await api("/api/secrets",keys); Object.keys(keys).forEach(k=>{ const el=$(`#${p}k_${k}`); if(el){ el.value=""; } }); }
     const r=await api(`/api/test/${svc}`,{}); connStatus[svc]=r; st.className="st "+(r.ok?"ok":"no"); st.textContent=(r.ok?"✓ ":"")+r.detail;
@@ -681,6 +688,8 @@ function fillSettings(){
   $$('[data-choice="cast"] button').forEach(b=>b.classList.toggle("on",b.dataset.v===(c.cast_mode||"ensemble"))); $("#c_solo").innerHTML=soloOptions();
   $$('[data-choice="subs"] button').forEach(b=>b.classList.toggle("on",b.dataset.v===(c.subtitle_mode||"chunk"))); $('[data-slot="chars"]').innerHTML=charForm("s_"); lastCharKey=""; loadCharVoices("s_");
   $$('[data-choice="avatar"] button').forEach(b=>b.classList.toggle("on",b.dataset.v===c.avatar_model));
+  $$('[data-choice="engine"] button').forEach(b=>b.classList.toggle("on",b.dataset.v===(c.video_engine||"comfyui")));
+  $("#c_comfy_url").value=(c.comfyui&&c.comfyui.url)||"http://127.0.0.1:8188";
 }
 document.addEventListener("click", e=>{ const b=e.target.closest(".choice button"); if(!b) return; [...b.parentNode.children].forEach(x=>x.classList.toggle("on",x===b)); });
 $("#openSettings").onclick=()=>{ fillSettings(); openSheet("settings"); };
@@ -691,7 +700,8 @@ $("#saveAll").onclick=async()=>{
   try { await api("/api/config",{ shindang:readInfo("s_"), brand:readBrand("s_"), schedule_enabled:$("#c_schedule").checked, schedule_time:$("#c_time").value,
       upload_mode:$('[data-choice="mode"] .on')?.dataset.v||"review", platforms, topic_fixed:$("#c_topic").value, voice_ids:$("#c_voices").value, veo_model:$("#c_veo").value, sub_font:$("#c_font").value,
       character_mode:$("#c_charmode").checked, characters:readChars("s_"),
-      cast_mode:$('[data-choice="cast"] .on')?.dataset.v||"ensemble", solo_id:$("#c_solo").value, subtitle_mode:$('[data-choice="subs"] .on')?.dataset.v||"chunk", avatar_model:$('[data-choice="avatar"] .on')?.dataset.v||S.config.avatar_model });
+      cast_mode:$('[data-choice="cast"] .on')?.dataset.v||"ensemble", solo_id:$("#c_solo").value, subtitle_mode:$('[data-choice="subs"] .on')?.dataset.v||"chunk", avatar_model:$('[data-choice="avatar"] .on')?.dataset.v||S.config.avatar_model,
+      video_engine:$('[data-choice="engine"] .on')?.dataset.v||"comfyui", comfyui:{url:$("#c_comfy_url").value.trim()||"http://127.0.0.1:8188"} });
     const keys=readKeys("s_"); if(Object.keys(keys).length) await api("/api/secrets",keys);
     toast("설정을 저장했어요"); await refreshNow(); closeSheets(); } catch(err){ toast(err.message); }
 };

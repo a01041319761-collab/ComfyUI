@@ -1,6 +1,7 @@
 """
 신당 숏폼 자동화 파이프라인 (웹앱에서 호출)
-대본(Claude) → 캐릭터 목소리(ElevenLabs) → 말하는 캐릭터(fal.ai Kling Avatar) 또는 장면 영상(Veo) → 합성(FFmpeg) → 업로드
+대본(Claude) → 캐릭터 목소리(ElevenLabs) → 말하는 3D 캐릭터(ComfyUI Wan 2.2 S2V, 실패 시 fal.ai Kling Avatar)
+또는 장면 영상(ComfyUI Wan 2.2, 실패 시 Veo) → 합성(FFmpeg) → 업로드
 설정은 data/config.json, API 키는 data/secrets.json, 기록은 data/history.json
 """
 
@@ -13,6 +14,8 @@ import threading
 import time
 
 import requests
+
+import comfy
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -128,6 +131,8 @@ DEFAULT_CONFIG = {
     "characters": DEFAULT_CHARACTERS,
     "avatar_model": "fal-ai/kling-video/ai-avatar/v2/standard",   # pro로 바꾸면 화질↑ 비용 2배
     "image_model": "gemini-nano-banana-2.1",
+    "video_engine": "comfyui",        # comfyui = 내 GPU 컴퓨터의 ComfyUI로 3D 영상, cloud = fal.ai·Veo
+    "comfyui": {"url": "http://127.0.0.1:8188"},   # 모델 파일 이름 등은 comfy.DEFAULT_COMFY 참고
 }
 BRAND_DIR = os.path.join(DATA_DIR, "brand")
 CHAR_DIR = os.path.join(DATA_DIR, "characters")
@@ -483,7 +488,47 @@ def _fallback_background():
     return None
 
 
+def use_comfy(cfg) -> bool:
+    return cfg.get("video_engine", "comfyui") == "comfyui"
+
+
+def comfy_ready(cfg) -> bool:
+    """ComfyUI 서버가 켜져 있는지 빠르게 확인 (꺼져 있으면 바로 클라우드로 넘어가요)."""
+    if not use_comfy(cfg):
+        return False
+    url = comfy.settings(cfg)["url"]
+    try:
+        requests.get(url + "/system_stats", timeout=5).raise_for_status()
+        return True
+    except Exception as e:
+        log(f"   ⚠️ ComfyUI({url})에 연결하지 못했어요 → 클라우드로 대신 만들어요 ({str(e)[:80]})")
+        return False
+
+
+def comfy_scenes(cfg, scenes, out_dir):
+    c = comfy.settings(cfg)
+    cl = comfy.ComfyClient(c["url"], c["timeout_min"])
+    log("🎥 [2/5] ComfyUI(Wan 2.2)로 3D 장면 영상 3컷 생성 중... (컷당 수 분, GPU에 따라 다름)")
+    ids = [cl.queue(comfy.build_t2v(c, f"{p} {comfy.STYLE_3D}", int(time.time()) + i,
+                                    prefix=f"shindang/{os.path.basename(out_dir)}_scene{i}"))
+           for i, p in enumerate(scenes, 1)]
+    clips = []
+    for i, pid in enumerate(ids, 1):
+        path = os.path.join(out_dir, f"scene{i}.mp4")
+        cl.download_video(cl.wait(pid), path)
+        clips.append(path)
+        log(f"   컷{i} 완료 (ComfyUI)")
+    bg = os.path.join(out_dir, "background.mp4")
+    concat_clips(clips, bg)
+    return bg
+
+
 def generate_scenes(cfg, secrets, scenes, out_dir):
+    if comfy_ready(cfg):
+        try:
+            return comfy_scenes(cfg, scenes, out_dir), True
+        except Exception as e:
+            log(f"   ⚠️ ComfyUI 장면 생성 실패 → Veo로 대신해요 ({str(e)[:160]})")
     log("🎥 [2/5] Veo로 장면 영상 3컷 생성 중... (컷당 1~5분)")
     try:
         from google import genai
@@ -856,7 +901,43 @@ def _still_clip(image, audio, out_path):
                     "-c:a", "aac", "-shortest", out_path], check=True)
 
 
-def make_talking_clip(cfg, secrets, cid, audio_path, out_path):
+def _mux_audio(video, audio, out_path):
+    """ComfyUI 영상(무음)에 원래 목소리를 입히고 목소리 길이에 맞춰 자름."""
+    d = _audio_duration(audio)
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", video, "-i", audio,
+                    "-map", "0:v", "-map", "1:a", "-t", f"{d:.3f}", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                    "-c:a", "aac", "-b:a", "192k", out_path], check=True)
+
+
+def comfy_talking_prompt(char) -> str:
+    style = "" if "photorealistic" in char.get("prompt", "").lower() else " " + comfy.STYLE_3D
+    return (f"{char.get('motion') or 'natural subtle head movement'}. The character speaks directly to the camera "
+            "with clear lip movement matching the voice, natural blinking and an expressive face, "
+            "the background stays still." + style)
+
+
+def make_comfy_talking_clip(cfg, cid, audio_path, out_path):
+    c = comfy.settings(cfg)
+    cl = comfy.ComfyClient(c["url"], c["timeout_min"])
+    run = os.path.basename(os.path.dirname(out_path))
+    image = cl.upload(char_image(cid), f"{cid}.png")
+    audio = cl.upload(audio_path, f"{run}_{os.path.basename(audio_path)}")
+    graph = comfy.build_s2v(c, image, audio, comfy_talking_prompt(cfg["characters"][cid]),
+                            _audio_duration(audio_path), int(time.time()),
+                            prefix=f"shindang/{run}_{cid}")
+    raw = out_path + ".comfy.mp4"
+    cl.run(graph, raw)
+    _mux_audio(raw, audio_path, out_path)
+
+
+def make_talking_clip(cfg, secrets, cid, audio_path, out_path, comfy_ok=False):
+    if comfy_ok:
+        try:
+            return make_comfy_talking_clip(cfg, cid, audio_path, out_path)
+        except Exception as e:
+            log(f"   ⚠️ ComfyUI 실패: {str(e)[:160]}" + (" → fal.ai로 대신해요" if secrets.get("FAL_KEY") else ""))
+            if not secrets.get("FAL_KEY"):
+                raise
     key = secrets.get("FAL_KEY", "")
     if not key:
         raise RuntimeError("fal.ai 키가 없어요")
@@ -917,14 +998,16 @@ def build_character_video(cfg, secrets, history, lines, out_dir):
         al = tts_with_timing(secrets, line["text"], voices[line["speaker"]], path)
         audios.append(path)
         line_events.append(make_chunks(line["text"], al, _audio_duration(path)))
-    log(f"🎭 [3/5] 캐릭터가 말하는 장면 만드는 중... ({len(lines)}장면, 장면마다 1~3분)")
+    comfy_ok = comfy_ready(cfg)
+    where = "ComfyUI(Wan 2.2 S2V)로 3D " if comfy_ok else ""
+    log(f"🎭 [3/5] {where}캐릭터가 말하는 장면 만드는 중... ({len(lines)}장면, 장면마다 1~3분)")
     clips, lipsync_ok = [], 0
     for i, (line, audio) in enumerate(zip(lines, audios), 1):
         cid = line["speaker"]
         clip = os.path.join(out_dir, f"talk{i}.mp4")
         for attempt in (1, 2):
             try:
-                make_talking_clip(cfg, secrets, cid, audio, clip)
+                make_talking_clip(cfg, secrets, cid, audio, clip, comfy_ok)
                 lipsync_ok += 1
                 break
             except Exception as e:
@@ -1316,6 +1399,8 @@ def test_connection(service: str) -> dict:
                              headers={"xi-api-key": s.get("ELEVENLABS_API_KEY", "")})
             r.raise_for_status()
             return {"ok": True, "detail": "ElevenLabs 연결됨"}
+        if service == "comfyui":
+            return comfy.check(cfg)
         if service == "fal":
             # 없는 작업 번호로 상태를 물어봐서 키만 확인 (비용 없음)
             r = requests.get("https://queue.fal.run/fal-ai/kling-video/requests/00000000-0000-0000-0000-000000000000/status",

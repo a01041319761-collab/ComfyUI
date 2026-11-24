@@ -214,6 +214,16 @@ def api_config():
     for key in ("topic_fixed", "veo_model", "schedule_time", "upload_mode", "sub_font", "avatar_model", "image_model"):
         if key in body:
             cfg[key] = str(body[key]).strip()
+    if body.get("video_engine") in ("comfyui", "cloud"):
+        cfg["video_engine"] = body["video_engine"]
+    if isinstance(body.get("comfyui"), dict):
+        cc = cfg.setdefault("comfyui", {})
+        for k, v in body["comfyui"].items():
+            if k in pl.comfy.DEFAULT_COMFY:
+                cc[k] = str(v).strip()[:300]
+        url = cc.get("url", "")
+        if url and not re.fullmatch(r"https?://[^\s/]+(:\d+)?/?", url):
+            return jsonify(error="ComfyUI 주소는 http://127.0.0.1:8188 형식으로 넣어주세요"), 400
     if "character_mode" in body:
         cfg["character_mode"] = bool(body["character_mode"])
     if body.get("cast_mode") in ("ensemble", "solo"):

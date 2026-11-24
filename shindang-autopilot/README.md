@@ -38,7 +38,8 @@
 | X 사용자 토큰 | developer.x.com (tweet.write, media.write) | 연결 탭 |
 | 유튜브 | 아래 참고 | 터미널에서 1회 |
 | 틱톡 Client key + secret | developers.tiktok.com | 설정 → 연결, 그다음 터미널에서 1회 |
-| fal.ai 키 (캐릭터 영상) | fal.ai | 설정 → 연결 |
+| fal.ai 키 (캐릭터 영상, ComfyUI를 안 쓸 때·예비용) | fal.ai | 설정 → 연결 |
+| ComfyUI 주소 (3D 캐릭터 영상) | 내 GPU 컴퓨터 ([COMFYUI.md](COMFYUI.md)) | 설정 → 진행 캐릭터 |
 
 **유튜브 연결:** Google Cloud에서 YouTube Data API v3를 켜고, OAuth 클라이언트(데스크톱 앱) JSON을
 `data/client_secret.json`으로 저장한 뒤 `python youtube_login.py` 를 한 번 실행하세요.
@@ -96,6 +97,13 @@
 - 정면을 보는 상반신 이미지여야 입 모양이 잘 맞아요.
 - 캐릭터는 모두 가상 인물이에요. 캡션에 'AI 캐릭터가 등장하는 영상'이라고 들어가고, 유튜브에는 AI 생성 콘텐츠 표시가 켜져요.
 - 실사풍 아이 캐릭터는 AI 서비스에서 막히는 경우가 많아서, 애기동자는 동화책 느낌으로 설정해 뒀어요.
+
+## 5-1. ComfyUI로 3D 영상 만들기 (내 GPU 컴퓨터)
+
+설정 → 진행 캐릭터 → **3D 영상 만드는 곳**에서 '내 컴퓨터 ComfyUI (3D)'를 고르면, 캐릭터가 말하는 장면을
+fal.ai 대신 내 컴퓨터의 ComfyUI(Wan 2.2 S2V)로 만들어요. 영상 생성 비용이 들지 않고, 3D 애니메이션풍으로 나와요.
+ComfyUI가 꺼져 있으면 fal.ai(키가 있을 때) → 정지 화면 순서로 대신해요.
+설치·모델·연결 방법은 **[COMFYUI.md](COMFYUI.md)** 를 보세요.
 
 ## 6. 주의
 
